@@ -6,7 +6,7 @@ import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 
 interface LoginForm {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -30,27 +30,49 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState<LoginForm>({
-    email: "",
+    username: "",
     password: "",
   });
 
   // Password Login
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.email || !formData.password) {
-      toast.error("Please enter email and password");
+    if (!formData.username || !formData.password) {
+      toast.error("Please enter username and password");
       return;
     }
 
     setLoading(true);
     try {
       const res = await api.post("/auth/login", {
-        email: formData.email,
+        username: formData.username,
         password: formData.password,
       });
-      const { token, user } = res.data.data;
+      const { token, user_id, username, roles } = res.data.data;
+      
+      // Map roles array to role_id
+      const roleMap: Record<string, number> = {
+        'university_admin': 1,
+        'finance_controller': 2,
+        'registrar': 3,
+        'college_admin': 4,
+        'hod': 5,
+        'faculty': 6,
+        'student': 7,
+        'staff': 8,
+        'librarian': 9,
+        'hostel_warden': 10,
+      };
+      
+      const user = {
+        id: user_id.toString(),
+        username,
+        role_id: roleMap[roles[0]] || 7, // Default to student if role not found
+        roles,
+      };
+      
       login(token, user);
-      toast.success(`Welcome back, ${user.username || user.email}!`);
+      toast.success(`Welcome back, ${username}!`);
       navigate(roleIdPaths[user.role_id] || "/student/dashboard");
     } catch (err: any) {
       toast.error(err.response?.data?.error || "Invalid credentials");
@@ -122,13 +144,13 @@ export default function Login() {
               <form onSubmit={handlePasswordLogin} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address
+                    Username
                   </label>
                   <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="you@university.edu"
+                    type="text"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    placeholder="Enter your username"
                     className="input-field"
                   />
                 </div>
@@ -188,12 +210,12 @@ export default function Login() {
                   🔑 Demo Credentials
                 </p>
                 <div className="space-y-1 text-xs text-primary-600">
-                  <p>Admin: univadmin@ntu.edu.in / Admin@123</p>
-                  <p>Finance: finance@ntu.edu.in / Admin@123</p>
-                  <p>Registrar: registrar@ntu.edu.in / Admin@123</p>
-                  <p>College: cetadmin@ntu.edu.in / Admin@123</p>
-                  <p>Faculty: rajesh.kumar@ntu.edu.in / Faculty@123</p>
-                  <p>Student: 24cse001@student.ntu.edu.in / Student@123</p>
+                  <p>Admin: univadmin / Admin@123</p>
+                  <p>Finance: finance / Admin@123</p>
+                  <p>Registrar: registrar / Admin@123</p>
+                  <p>College: cetadmin / Admin@123</p>
+                  <p>Faculty: rajesh.kumar / Faculty@123</p>
+                  <p>Student: 24cse001 / Student@123</p>
                 </div>
               </div>
             </div>
