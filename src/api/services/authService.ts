@@ -16,8 +16,8 @@ import type {
   RolePermissions
 } from '../../types';
 
-const AUTH_BASE = '/auth';
-const USERS_BASE = '/users';
+const AUTH_BASE = '/api/v1/auth';
+const USERS_BASE = '/api/v1/users';
 
 // Authentication
 export const authService = {
@@ -38,6 +38,12 @@ export const authService = {
   // Registration
   register: async (data: RegisterData): Promise<ApiResponse<User>> => {
     const response = await api.post<ApiResponse<User>>(`${AUTH_BASE}/register`, data);
+    return response.data;
+  },
+
+  // Get Profile (backend endpoint)
+  getProfile: async (): Promise<ApiResponse<User>> => {
+    const response = await api.get<ApiResponse<User>>(`${AUTH_BASE}/profile`);
     return response.data;
   },
 

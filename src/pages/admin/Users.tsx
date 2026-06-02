@@ -4,6 +4,7 @@ import PageHeader from "../../components/shared/PageHeader";
 import Modal from "../../components/shared/Modal";
 import StatusBadge from "../../components/shared/StatusBadge";
 import LoadingSpinner from "../../components/shared/LoadingSpinner";
+import authApi from "../../api/services/authService";
 import api from "../../api/axios";
 import { useForm } from "react-hook-form";
 import { Plus, ToggleLeft, ToggleRight } from "lucide-react";
@@ -14,8 +15,8 @@ interface CreateUserForm {
   username: string;
   email: string;
   password: string;
-  role: string;
-  phone: string;
+  role_name: string;
+  phone?: string;
   college_id?: number;
 }
 
@@ -28,38 +29,40 @@ export default function AdminUsers() {
   const { register, handleSubmit, watch, reset, formState: { errors } } =
     useForm<CreateUserForm>();
 
-  const selectedRole = watch("role");
+  const selectedRole = watch("role_name");
 
   const fetchUsers = async () => {
-    const [u, c] = await Promise.all([
-      api.get("/admin/users"),
-      api.get("/colleges"),
-    ]);
-    setUsers(u.data.data || []);
-    setColleges(c.data.data || []);
-    setLoading(false);
+    try {
+      const [u, c] = await Promise.all([
+        authApi.users.getAll(),
+        api.get("/colleges"),
+      ]);
+      setUsers(u.data || []);
+      setColleges(c.data.data || []);
+      setLoading(false);
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchUsers(); }, []);
 
   const onSubmit = async (data: CreateUserForm) => {
     try {
-      await api.post("/admin/users", {
-        ...data,
-        college_id: data.college_id ? Number(data.college_id) : undefined,
-      });
+      await authApi.auth.register(data);
       toast.success("User created successfully!");
       reset();
       setModal(false);
       fetchUsers();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to create user");
+      toast.error(err.response?.data?.error || err.response?.data?.message || "Failed to create user");
     }
   };
 
   const toggleUser = async (id: number) => {
     try {
-      await api.put(`/admin/users/${id}/toggle`);
+      await authApi.users.toggleActive(id);
       toast.success("User status updated");
       fetchUsers();
     } catch {
@@ -178,17 +181,22 @@ export default function AdminUsers() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Role
             </label>
-            <select {...register("role", { required: "Required" })}
+            <select {...register("role_name", { required: "Required" })}
               className="input-field">
               <option value="">Select Role</option>
+              <option value="admin">University Admin</option>
               <option value="finance_controller">Finance Controller</option>
               <option value="registrar">Registrar</option>
               <option value="college_admin">College Admin</option>
+              <option value="hod">Head of Department</option>
               <option value="faculty">Faculty</option>
+              <option value="librarian">Librarian</option>
+              <option value="hostel_warden">Hostel Warden</option>
+              <option value="admission_team">Admission Team</option>
             </select>
           </div>
 
-          {(selectedRole === "college_admin" || selectedRole === "faculty") && (
+          {(selectedRole === "college_admin" || selectedRole === "faculty" || selectedRole === "hod") && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Assign College

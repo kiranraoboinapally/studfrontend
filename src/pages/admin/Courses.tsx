@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Layout from "../../components/shared/Layout";
 import PageHeader from "../../components/shared/PageHeader";
 import Modal from "../../components/shared/Modal";
@@ -7,19 +7,17 @@ import api from "../../api/axios";
 import { useForm } from "react-hook-form";
 import { Plus, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
-import type { Program, College } from "../../types";
+import type { Program } from "../../types";
 
 export default function AdminCourses() {
   const [programs, setPrograms] = useState<Program[]>([]);
-  const [colleges, setColleges] = useState<College[]>([]);
+  const [campuses, setCampuses] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [selectedCollege, setSelectedCollege] = useState<number | null>(null);
+  const [selectedCampus, setSelectedCampus] = useState<number | null>(null);
 
   const [loading, setLoading] = useState(true);
 
   const [modal, setModal] = useState(false);
-
-  // NEW
   const [departmentModal, setDepartmentModal] = useState(false);
 
   const {
@@ -29,24 +27,22 @@ export default function AdminCourses() {
     setValue,
   } = useForm();
 
-  // Department Form
   const {
     register: registerDepartment,
     handleSubmit: handleDepartmentSubmit,
     reset: resetDepartment,
-    setValue: setDepartmentValue,
   } = useForm();
 
   const fetchAll = async () => {
     try {
-      const [pr, cl, dep] = await Promise.all([
-        api.get("/courses"),
-        api.get("/colleges"),
-        api.get("/departments"),
+      const [pr, cp, dep] = await Promise.all([
+        api.get("/api/v1/academic/programs"),
+        api.get("/api/v1/campuses"),
+        api.get("/api/v1/departments"),
       ]);
 
       setPrograms(pr.data.data || []);
-      setColleges(cl.data.data || []);
+      setCampuses(cp.data.data || []);
       setDepartments(dep.data.data || []);
     } catch (err) {
       toast.error("Failed to load data");
@@ -59,70 +55,52 @@ export default function AdminCourses() {
     fetchAll();
   }, []);
 
-  // FILTER DEPARTMENTS BASED ON COLLEGE
   const filteredDepartments = departments.filter(
-    (d) => Number(d.college_id) === Number(selectedCollege)
+    (d) => Number(d.campus_id) === Number(selectedCampus)
   );
 
-  // CREATE PROGRAM
   const onSubmit = async (data: any) => {
     try {
-      await api.post("/admin/courses", {
+      await api.post("/api/v1/academic/programs", {
         name: data.name,
         code: data.code,
         department_id: Number(data.department_id),
         duration_years: Number(data.duration_years),
+        total_semesters: Number(data.total_semesters) || 8,
+        degree_level: data.degree_level || "undergraduate",
         total_seats: Number(data.total_seats),
-        description: data.description,
+        is_active: true,
       });
 
       toast.success("Program created!");
-
       reset();
-      setSelectedCollege(null);
-
+      setSelectedCampus(null);
       setModal(false);
-
       fetchAll();
     } catch (err: any) {
       toast.error(err.response?.data?.error || "Failed");
     }
   };
 
-  // CREATE DEPARTMENT
-  // CREATE DEPARTMENT
   const createDepartment = async (data: any) => {
     try {
-      const res = await api.post("/admin/departments", {
+      const res = await api.post("/api/v1/departments", {
         name: data.name,
         code: data.code,
-        college_id: Number(data.college_id),
+        campus_id: Number(data.campus_id),
+        established_year: new Date().getFullYear(),
+        is_active: true,
       });
 
       const newDepartment = res.data.data;
-
       toast.success("Department created!");
-
-      // ADD NEW DEPARTMENT INSTANTLY
-      setDepartments((prev: any) => [
-        ...prev,
-        newDepartment,
-      ]);
-
-      // KEEP SAME COLLEGE SELECTED
-      setSelectedCollege(Number(data.college_id));
-
-      // AUTO SELECT NEW DEPARTMENT
+      setDepartments((prev: any) => [...prev, newDepartment]);
+      setSelectedCampus(Number(data.campus_id));
       setValue("department_id", newDepartment.id);
-
       resetDepartment();
-
       setDepartmentModal(false);
     } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ||
-        "Failed to create department"
-      );
+      toast.error(err.response?.data?.error || "Failed to create department");
     }
   };
   if (loading) {
@@ -180,8 +158,8 @@ export default function AdminCourses() {
                   </p>
 
                   <p className="text-sm text-primary-600 mt-1">
-                    {p.department?.college?.name ||
-                      "No College"}
+                    {p.department?.campus?.name ||
+                      "No Campus"}
                   </p>
 
                   {/* OPTIONAL DEPARTMENT NAME */}
@@ -265,22 +243,22 @@ export default function AdminCourses() {
             </div>
           </div>
 
-          {/* COLLEGE SELECT */}
+          {/* CAMPUS SELECT */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              College
+              Campus
             </label>
 
             <select
-              {...register("college_id", { required: true })}
+              {...register("campus_id", { required: true })}
               className="input-field"
               onChange={(e) =>
-                setSelectedCollege(Number(e.target.value))
+                setSelectedCampus(Number(e.target.value))
               }
             >
-              <option value="">Select College</option>
+              <option value="">Select Campus</option>
 
-              {colleges.map((c) => (
+              {campuses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -297,8 +275,8 @@ export default function AdminCourses() {
                 Department
               </label>
 
-              {/* ALWAYS SHOW ADD BUTTON WHEN COLLEGE SELECTED */}
-              {selectedCollege && (
+              {/* ALWAYS SHOW ADD BUTTON WHEN CAMPUS SELECTED */}
+              {selectedCampus && (
                 <button
                   type="button"
                   onClick={() => setDepartmentModal(true)}
@@ -314,18 +292,18 @@ export default function AdminCourses() {
               {...register("department_id", {
                 required: true,
               })}
-              className={`input-field ${!selectedCollege || filteredDepartments.length === 0
+              className={`input-field ${!selectedCampus || filteredDepartments.length === 0
                 ? "bg-gray-100 cursor-not-allowed"
                 : ""
                 }`}
               disabled={
-                !selectedCollege ||
+                !selectedCampus ||
                 filteredDepartments.length === 0
               }
             >
               <option value="">
-                {!selectedCollege
-                  ? "Select College First"
+                {!selectedCampus
+                  ? "Select Campus First"
                   : filteredDepartments.length === 0
                     ? "No Departments Available"
                     : "Select Department"}
@@ -339,7 +317,7 @@ export default function AdminCourses() {
             </select>
 
             {/* EMPTY STATE */}
-            {selectedCollege &&
+            {selectedCampus &&
               filteredDepartments.length === 0 && (
                 <div className="mt-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
                   <div>
@@ -349,7 +327,7 @@ export default function AdminCourses() {
 
                     <p className="mt-1 text-sm text-yellow-700">
                       No departments have been created
-                      for the selected college yet.
+                      for the selected campus yet.
                       Click "Add Department" to create one.
                     </p>
                   </div>
@@ -357,15 +335,15 @@ export default function AdminCourses() {
               )}
 
             {/* HELPER */}
-            {!selectedCollege && (
+            {!selectedCampus && (
               <p className="mt-2 text-sm text-gray-500">
-                Please select a college first to view departments.
+                Please select a campus first to view departments.
               </p>
             )}
           </div>
 
-          {/* DURATION + SEATS */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* DURATION + SEMESTERS + SEATS */}
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Duration (Years)
@@ -383,6 +361,21 @@ export default function AdminCourses() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Total Semesters
+              </label>
+
+              <input
+                {...register("total_semesters", {
+                  required: true,
+                })}
+                type="number"
+                className="input-field"
+                placeholder="8"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Total Seats
               </label>
 
@@ -395,6 +388,23 @@ export default function AdminCourses() {
                 placeholder="120"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Degree Level
+            </label>
+
+            <select
+              {...register("degree_level", { required: true })}
+              className="input-field"
+            >
+              <option value="undergraduate">Undergraduate</option>
+              <option value="postgraduate">Postgraduate</option>
+              <option value="doctorate">Doctorate</option>
+              <option value="diploma">Diploma</option>
+              <option value="certificate">Certificate</option>
+            </select>
           </div>
 
           {/* DESCRIPTION */}
@@ -473,19 +483,19 @@ export default function AdminCourses() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              College
+              Campus
             </label>
 
             <select
-              {...registerDepartment("college_id", {
+              {...registerDepartment("campus_id", {
                 required: true,
               })}
               className="input-field"
-              defaultValue={selectedCollege || ""}
+              defaultValue={selectedCampus || ""}
             >
-              <option value="">Select College</option>
+              <option value="">Select Campus</option>
 
-              {colleges.map((c) => (
+              {campuses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>

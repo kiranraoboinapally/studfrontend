@@ -200,7 +200,7 @@ export default function Apply() {
         if (applicantInfo.application_id) {
           try {
             const statusRes = await api.get(
-              `/auth/application-status?application_id=${applicantInfo.application_id}&email=${applicantInfo.email}`
+              `/api/v1/auth/application-status?application_id=${applicantInfo.application_id}&email=${applicantInfo.email}`
             );
             const appStatus = statusRes.data.data?.status;
             if (appStatus && appStatus !== "draft") {
@@ -213,18 +213,35 @@ export default function Apply() {
         }
 
         const [cyclesRes, collegesRes, coursesRes] = await Promise.all([
-          api.get("/admissions/active-cycle"),
-          api.get("/colleges"),
-          api.get("/courses"),
+          api.get("/api/v1/admissions/cycles/open"),
+          api.get("/api/v1/core/colleges"),
+          api.get("/api/v1/core/courses"),
         ]);
 
-        const cyclesData = cyclesRes.data.data?.cycles || [];
-        const hasOpen = cyclesRes.data.data?.has_open || false;
+        const cyclesData = cyclesRes.data.data || [];
+        const now = new Date();
+        
+        // Filter cycles to only show those that are actually open based on date
+        const openCycles = cyclesData.filter((c: any) => {
+          const endDate = new Date(c.application_end || c.ApplicationEndDate);
+          return c.is_open && now <= endDate;
+        }).map((c: any) => ({
+          id: c.id || c.ID,
+          name: c.name || c.Name,
+          description: c.description || c.Description || "",
+          application_start_date: c.application_start || c.ApplicationStartDate,
+          application_end_date: c.application_end || c.ApplicationEndDate,
+          application_fee: c.application_fee || c.ApplicationFee || 0,
+          admission_fee: c.admission_fee || c.AdmissionFee || 0,
+          max_applications: c.max_applications || c.MaxApplications || 0,
+          status: c.is_open && now <= new Date(c.application_end || c.ApplicationEndDate) ? "open" : "closed",
+          days_until_close: Math.max(0, Math.ceil((new Date(c.application_end || c.ApplicationEndDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
+        }));
 
-        setCycles(cyclesData);
+        setCycles(openCycles);
         setColleges(collegesRes.data.data || []);
         setCourses(coursesRes.data.data || []);
-        setAdmissionsOpen(hasOpen);
+        setAdmissionsOpen(openCycles.length > 0);
       } catch (err) {
         console.error("Failed to load data:", err);
         setAdmissionsOpen(false);

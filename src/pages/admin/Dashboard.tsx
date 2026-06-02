@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Layout from "../../components/shared/Layout";
 import PageHeader from "../../components/shared/PageHeader";
 import StatCard from "../../components/shared/StatCard";
@@ -11,10 +11,10 @@ import {
 
 interface Stats {
   total_students: number;
-  total_colleges: number;
-  total_courses: number;
+  total_universities: number;
+  total_programs: number;
   pending_applications: number;
-  enrolled_students: number;
+  total_employees: number;
   total_revenue: number;
 }
 
@@ -23,9 +23,34 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/admin/dashboard").then((res) => {
-      setStats(res.data.data);
-    }).finally(() => setLoading(false));
+    const fetchStats = async () => {
+      try {
+        // Fetch data from multiple backend endpoints
+        const [studentsRes, universitiesRes, programsRes, applicantsRes, employeesRes, financeRes] = await Promise.all([
+          api.get("/api/v1/students"),
+          api.get("/api/v1/universities"),
+          api.get("/api/v1/academic/programs"),
+          api.get("/api/v1/admissions/applicants"),
+          api.get("/api/v1/hr/employees"),
+          api.get("/api/v1/finance/summary"),
+        ]);
+
+        setStats({
+          total_students: studentsRes.data.data?.length || 0,
+          total_universities: universitiesRes.data.data?.length || 0,
+          total_programs: programsRes.data.data?.length || 0,
+          pending_applications: applicantsRes.data.data?.filter((a: any) => a.status_id === 1).length || 0,
+          total_employees: employeesRes.data.data?.length || 0,
+          total_revenue: financeRes.data.data?.total_revenue || 0,
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
   }, []);
 
   if (loading) return <Layout><LoadingSpinner /></Layout>;
@@ -45,14 +70,14 @@ export default function AdminDashboard() {
           color="blue"
         />
         <StatCard
-          title="Total Colleges"
-          value={stats?.total_colleges || 0}
+          title="Universities"
+          value={stats?.total_universities || 0}
           icon={Building2}
           color="green"
         />
         <StatCard
-          title="Total Courses"
-          value={stats?.total_courses || 0}
+          title="Programs"
+          value={stats?.total_programs || 0}
           icon={BookOpen}
           color="purple"
         />
@@ -63,8 +88,8 @@ export default function AdminDashboard() {
           color="yellow"
         />
         <StatCard
-          title="Enrolled Students"
-          value={stats?.enrolled_students || 0}
+          title="Total Employees"
+          value={stats?.total_employees || 0}
           icon={Users}
           color="indigo"
         />
@@ -73,7 +98,7 @@ export default function AdminDashboard() {
           value={`₹${((stats?.total_revenue || 0) / 100000).toFixed(1)}L`}
           icon={IndianRupee}
           color="green"
-          subtitle="Across all colleges"
+          subtitle="Across all universities"
         />
       </div>
     </Layout>

@@ -1,236 +1,130 @@
 // ==================== ACADEMIC SERVICE ====================
 import api from '../axios';
 import type { 
-  Exam,
-  Result,
-  Assignment,
-  AssignmentSubmission,
-  Attendance,
-  AttendanceSummary,
-  Timetable,
-  InternalMarks,
   ApiResponse,
-  PaginatedResponse,
   QueryFilters 
 } from '../../types';
 
+const ACADEMIC_BASE = '/api/v1/academic';
+
 export const academicService = {
-  // Exams
-  getExams: async (filters?: QueryFilters): Promise<PaginatedResponse<Exam>> => {
-    const response = await api.get<PaginatedResponse<Exam>>('/exams', { params: filters });
+  // Academic Terms (replacing academic-years)
+  getTerms: async (filters?: QueryFilters): Promise<ApiResponse<any[]>> => {
+    const response = await api.get<ApiResponse<any[]>>(`${ACADEMIC_BASE}/terms`, { params: filters });
     return response.data;
   },
 
-  getExamById: async (id: number): Promise<ApiResponse<Exam>> => {
-    const response = await api.get<ApiResponse<Exam>>(`/exams/${id}`);
+  getCurrentTerm: async (): Promise<ApiResponse<any>> => {
+    const response = await api.get<ApiResponse<any>>(`${ACADEMIC_BASE}/terms/current`);
     return response.data;
   },
 
-  createExam: async (data: Partial<Exam>): Promise<ApiResponse<Exam>> => {
-    const response = await api.post<ApiResponse<Exam>>('/exams', data);
+  createTerm: async (data: { name: string; academic_year: string; start_date: string; end_date: string; is_current?: boolean }): Promise<ApiResponse<any>> => {
+    const response = await api.post<ApiResponse<any>>(`${ACADEMIC_BASE}/terms`, data);
     return response.data;
   },
 
-  updateExam: async (id: number, data: Partial<Exam>): Promise<ApiResponse<Exam>> => {
-    const response = await api.put<ApiResponse<Exam>>(`/exams/${id}`, data);
+  updateTerm: async (id: number, data: any): Promise<ApiResponse<any>> => {
+    const response = await api.put<ApiResponse<any>>(`${ACADEMIC_BASE}/terms/${id}`, data);
     return response.data;
   },
 
-  deleteExam: async (id: number): Promise<ApiResponse<void>> => {
-    const response = await api.delete<ApiResponse<void>>(`/exams/${id}`);
+  setCurrentTerm: async (id: number): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>(`${ACADEMIC_BASE}/terms/${id}/set-current`);
     return response.data;
   },
 
-  publishExam: async (id: number): Promise<ApiResponse<Exam>> => {
-    const response = await api.post<ApiResponse<Exam>>(`/exams/${id}/publish`);
+  // Programs
+  getPrograms: async (filters?: QueryFilters): Promise<ApiResponse<any[]>> => {
+    const response = await api.get<ApiResponse<any[]>>(`${ACADEMIC_BASE}/programs`, { params: filters });
     return response.data;
   },
 
-  // Results
-  getResults: async (filters?: QueryFilters): Promise<PaginatedResponse<Result>> => {
-    const response = await api.get<PaginatedResponse<Result>>('/results', { params: filters });
+  createProgram: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post<ApiResponse<any>>(`${ACADEMIC_BASE}/programs`, data);
     return response.data;
   },
 
-  getMyResults: async (): Promise<ApiResponse<Result[]>> => {
-    const response = await api.get<ApiResponse<Result[]>>('/results/my');
+  // Subjects
+  getSubjects: async (filters?: QueryFilters): Promise<ApiResponse<any[]>> => {
+    const response = await api.get<ApiResponse<any[]>>(`${ACADEMIC_BASE}/subjects`, { params: filters });
     return response.data;
   },
 
-  getResultById: async (id: number): Promise<ApiResponse<Result>> => {
-    const response = await api.get<ApiResponse<Result>>(`/results/${id}`);
+  createSubject: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post<ApiResponse<any>>(`${ACADEMIC_BASE}/subjects`, data);
     return response.data;
   },
 
-  addResult: async (data: Partial<Result>): Promise<ApiResponse<Result>> => {
-    const response = await api.post<ApiResponse<Result>>('/results', data);
+  // Batches
+  getBatches: async (filters?: QueryFilters): Promise<ApiResponse<any[]>> => {
+    const response = await api.get<ApiResponse<any[]>>(`${ACADEMIC_BASE}/batches`, { params: filters });
     return response.data;
   },
 
-  updateResult: async (id: number, data: Partial<Result>): Promise<ApiResponse<Result>> => {
-    const response = await api.put<ApiResponse<Result>>(`/results/${id}`, data);
+  createBatch: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post<ApiResponse<any>>(`${ACADEMIC_BASE}/batches`, data);
     return response.data;
   },
 
-  bulkUploadResults: async (results: Partial<Result>[]): Promise<ApiResponse<Result[]>> => {
-    const response = await api.post<ApiResponse<Result[]>>('/results/bulk', { results });
+  // Course Offerings
+  getOfferings: async (filters?: QueryFilters): Promise<ApiResponse<any[]>> => {
+    const response = await api.get<ApiResponse<any[]>>(`${ACADEMIC_BASE}/offerings`, { params: filters });
     return response.data;
   },
 
-  publishResults: async (examId?: number): Promise<ApiResponse<void>> => {
-    const url = examId ? `/results/publish?exam_id=${examId}` : '/results/publish';
-    const response = await api.post<ApiResponse<void>>(url);
+  createOffering: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post<ApiResponse<any>>(`${ACADEMIC_BASE}/offerings`, data);
     return response.data;
   },
 
-  // Assignments
-  getAssignments: async (filters?: QueryFilters): Promise<PaginatedResponse<Assignment>> => {
-    const response = await api.get<PaginatedResponse<Assignment>>('/assignments', { params: filters });
+  // Term Registrations
+  getTermRegistrations: async (filters?: QueryFilters): Promise<ApiResponse<any[]>> => {
+    const response = await api.get<ApiResponse<any[]>>(`${ACADEMIC_BASE}/term-registrations`, { params: filters });
     return response.data;
   },
 
-  getAssignmentById: async (id: number): Promise<ApiResponse<Assignment>> => {
-    const response = await api.get<ApiResponse<Assignment>>(`/assignments/${id}`);
+  registerTerm: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post<ApiResponse<any>>(`${ACADEMIC_BASE}/term-registrations`, data);
     return response.data;
   },
 
-  createAssignment: async (data: Partial<Assignment>): Promise<ApiResponse<Assignment>> => {
-    const response = await api.post<ApiResponse<Assignment>>('/assignments', data);
+  // Course Registrations
+  registerCourse: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post<ApiResponse<any>>(`${ACADEMIC_BASE}/course-registrations`, data);
     return response.data;
   },
 
-  updateAssignment: async (id: number, data: Partial<Assignment>): Promise<ApiResponse<Assignment>> => {
-    const response = await api.put<ApiResponse<Assignment>>(`/assignments/${id}`, data);
+  dropCourse: async (id: number): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>(`${ACADEMIC_BASE}/course-registrations/${id}/drop`);
     return response.data;
   },
 
-  deleteAssignment: async (id: number): Promise<ApiResponse<void>> => {
-    const response = await api.delete<ApiResponse<void>>(`/assignments/${id}`);
+  // Student Courses
+  getStudentCourses: async (studentId: number): Promise<ApiResponse<any[]>> => {
+    const response = await api.get<ApiResponse<any[]>>(`${ACADEMIC_BASE}/students/${studentId}/courses`);
     return response.data;
   },
 
-  publishAssignment: async (id: number): Promise<ApiResponse<Assignment>> => {
-    const response = await api.patch<ApiResponse<Assignment>>(`/assignments/${id}/publish`);
-    return response.data;
-  },
-
-  // Assignment Submissions
-  getSubmissions: async (assignmentId: number): Promise<ApiResponse<AssignmentSubmission[]>> => {
-    const response = await api.get<ApiResponse<AssignmentSubmission[]>>(`/assignments/${assignmentId}/submissions`);
-    return response.data;
-  },
-
-  getMySubmissions: async (): Promise<ApiResponse<AssignmentSubmission[]>> => {
-    const response = await api.get<ApiResponse<AssignmentSubmission[]>>('/submissions/my');
-    return response.data;
-  },
-
-  submitAssignment: async (assignmentId: number, data: Partial<AssignmentSubmission>, files?: File[]): Promise<ApiResponse<AssignmentSubmission>> => {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined) formData.append(key, String(value));
-    });
-    files?.forEach(file => formData.append('files', file));
-    
-    const response = await api.post<ApiResponse<AssignmentSubmission>>(`/assignments/${assignmentId}/submit`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    return response.data;
-  },
-
-  gradeSubmission: async (submissionId: number, marks: number, grade?: string, remarks?: string): Promise<ApiResponse<AssignmentSubmission>> => {
-    const response = await api.patch<ApiResponse<AssignmentSubmission>>(`/submissions/${submissionId}/grade`, {
-      marks_obtained: marks,
-      grade,
-      remarks
-    });
+  // Student Timetable
+  getStudentTimetable: async (studentId: number): Promise<ApiResponse<any[]>> => {
+    const response = await api.get<ApiResponse<any[]>>(`${ACADEMIC_BASE}/students/${studentId}/timetable`);
     return response.data;
   },
 
   // Attendance
-  getAttendance: async (filters?: QueryFilters): Promise<PaginatedResponse<Attendance>> => {
-    const response = await api.get<PaginatedResponse<Attendance>>('/attendance', { params: filters });
+  markAttendance: async (data: any): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>(`${ACADEMIC_BASE}/attendance`, data);
     return response.data;
   },
 
-  getMyAttendance: async (subjectId?: number): Promise<ApiResponse<Attendance[]>> => {
-    const params = subjectId ? { subject_id: subjectId } : {};
-    const response = await api.get<ApiResponse<Attendance[]>>('/attendance/my', { params });
+  getStudentAttendance: async (studentId: number): Promise<ApiResponse<any[]>> => {
+    const response = await api.get<ApiResponse<any[]>>(`${ACADEMIC_BASE}/students/${studentId}/attendance`);
     return response.data;
   },
 
-  getAttendanceSummary: async (studentId?: number): Promise<ApiResponse<AttendanceSummary>> => {
-    const url = studentId ? `/attendance/summary/${studentId}` : '/attendance/my/summary';
-    const response = await api.get<ApiResponse<AttendanceSummary>>(url);
-    return response.data;
-  },
-
-  markAttendance: async (data: Partial<Attendance>[]): Promise<ApiResponse<Attendance[]>> => {
-    const response = await api.post<ApiResponse<Attendance[]>>('/attendance/bulk', { attendance: data });
-    return response.data;
-  },
-
-  updateAttendance: async (id: number, status: string, remarks?: string): Promise<ApiResponse<Attendance>> => {
-    const response = await api.patch<ApiResponse<Attendance>>(`/attendance/${id}`, { status, remarks });
-    return response.data;
-  },
-
-  // Timetable
-  getTimetables: async (filters?: QueryFilters): Promise<ApiResponse<Timetable[]>> => {
-    const response = await api.get<ApiResponse<Timetable[]>>('/timetables', { params: filters });
-    return response.data;
-  },
-
-  getMyTimetable: async (): Promise<ApiResponse<Timetable[]>> => {
-    const response = await api.get<ApiResponse<Timetable[]>>('/timetables/my');
-    return response.data;
-  },
-
-  getFacultyTimetable: async (facultyId?: number): Promise<ApiResponse<Timetable[]>> => {
-    const url = facultyId ? `/timetables/faculty/${facultyId}` : '/timetables/faculty/my';
-    const response = await api.get<ApiResponse<Timetable[]>>(url);
-    return response.data;
-  },
-
-  createTimetable: async (data: Partial<Timetable>): Promise<ApiResponse<Timetable>> => {
-    const response = await api.post<ApiResponse<Timetable>>('/timetables', data);
-    return response.data;
-  },
-
-  updateTimetable: async (id: number, data: Partial<Timetable>): Promise<ApiResponse<Timetable>> => {
-    const response = await api.put<ApiResponse<Timetable>>(`/timetables/${id}`, data);
-    return response.data;
-  },
-
-  deleteTimetable: async (id: number): Promise<ApiResponse<void>> => {
-    const response = await api.delete<ApiResponse<void>>(`/timetables/${id}`);
-    return response.data;
-  },
-
-  // Internal Marks
-  getInternalMarks: async (filters?: QueryFilters): Promise<ApiResponse<InternalMarks[]>> => {
-    const response = await api.get<ApiResponse<InternalMarks[]>>('/internal-marks', { params: filters });
-    return response.data;
-  },
-
-  getMyInternalMarks: async (): Promise<ApiResponse<InternalMarks[]>> => {
-    const response = await api.get<ApiResponse<InternalMarks[]>>('/internal-marks/my');
-    return response.data;
-  },
-
-  addInternalMarks: async (data: Partial<InternalMarks>): Promise<ApiResponse<InternalMarks>> => {
-    const response = await api.post<ApiResponse<InternalMarks>>('/internal-marks', data);
-    return response.data;
-  },
-
-  updateInternalMarks: async (id: number, data: Partial<InternalMarks>): Promise<ApiResponse<InternalMarks>> => {
-    const response = await api.put<ApiResponse<InternalMarks>>(`/internal-marks/${id}`, data);
-    return response.data;
-  },
-
-  publishInternalMarks: async (subjectId?: number): Promise<ApiResponse<void>> => {
-    const url = subjectId ? `/internal-marks/publish?subject_id=${subjectId}` : '/internal-marks/publish';
-    const response = await api.post<ApiResponse<void>>(url);
+  getAttendanceSummary: async (studentId: number): Promise<ApiResponse<any>> => {
+    const response = await api.get<ApiResponse<any>>(`${ACADEMIC_BASE}/students/${studentId}/attendance/summary`);
     return response.data;
   },
 };

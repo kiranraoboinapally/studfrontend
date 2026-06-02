@@ -19,9 +19,9 @@ export interface AdmissionApiCycle {
 export interface CreateAdmissionApiCycle {
   name: string;
   academic_year: string;
-  start_date: string;
-  end_date: string;
-  status_id: number;
+  start_date?: string;
+  end_date?: string;
+  status_id?: number;
 }
 
 export interface UpdateAdmissionApiCycle {
@@ -62,6 +62,14 @@ export interface AdmissionApiApplicant {
   status_id: number;
   created_at: string;
   updated_at: string;
+  // New fields for hostel, transport, scholarship
+  hostel_required?: boolean;
+  hostel_type?: 'ac' | 'non_ac';
+  transport_required?: boolean;
+  scholarship_status?: 'none' | 'state_topper' | 'state_player';
+  stream_id?: number;
+  mission_fee?: number;
+  enrollment_number?: string;
   cycle?: AdmissionApiCycle;
   program?: Program;
   gender?: Lookup;
@@ -84,6 +92,12 @@ export interface CreateAdmissionApiApplicant {
   address: string;
   previous_qualification: string;
   previous_percentage: number;
+  // New fields for hostel, transport, scholarship
+  hostel_required?: boolean;
+  hostel_type?: 'ac' | 'non_ac';
+  transport_required?: boolean;
+  scholarship_status?: 'none' | 'state_topper' | 'state_player';
+  stream_id?: number;
 }
 
 export interface UpdateAdmissionApiApplicant {
@@ -93,6 +107,12 @@ export interface UpdateAdmissionApiApplicant {
   phone?: string;
   address?: string;
   status_id?: number;
+  hostel_required?: boolean;
+  hostel_type?: 'ac' | 'non_ac';
+  transport_required?: boolean;
+  scholarship_status?: 'none' | 'state_topper' | 'state_player';
+  stream_id?: number;
+  mission_fee?: number;
 }
 
 export interface UpdateAdmissionApiApplicantStatus {

@@ -44,7 +44,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await api.post("/auth/login", {
+      const res = await api.post("/api/v1/auth/login", {
         username: formData.username,
         password: formData.password,
       });
@@ -198,9 +198,9 @@ export default function Login() {
               </form>
 
               <p className="text-center text-sm text-gray-500 mt-6">
-                New student?{" "}
-                <Link to="/register" className="text-primary-600 font-medium hover:underline">
-                  Apply for Admission
+                New to the university?{" "}
+                <Link to="/admission/enquiry" className="text-primary-600 font-medium hover:underline">
+                  Start Admission Process
                 </Link>
               </p>
 

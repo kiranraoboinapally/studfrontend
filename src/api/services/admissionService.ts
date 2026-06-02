@@ -22,7 +22,7 @@ import type {
   QueryFilters
 } from '../../types';
 
-const ADMISSIONS_BASE = '/admissions';
+const ADMISSIONS_BASE = '/api/v1/admissions';
 
 // Admission Cycles
 export const admissionCycleService = {
@@ -93,6 +93,12 @@ export const applicantService = {
     const response = await api.delete<ApiResponse<void>>(`${ADMISSIONS_BASE}/applicants/${id}`);
     return response.data;
   },
+
+  // Check seat availability for a program in a cycle
+  checkSeatAvailability: async (cycleId: number, programId: number): Promise<ApiResponse<{ available: boolean; total_seats: number; allocated_seats: number; available_seats: number }>> => {
+    const response = await api.get<ApiResponse<{ available: boolean; total_seats: number; allocated_seats: number; available_seats: number }>>(`${ADMISSIONS_BASE}/cycles/${cycleId}/programs/${programId}/seat-availability`);
+    return response.data;
+  },
 };
 
 // Applicant Documents
@@ -109,6 +115,11 @@ export const applicantDocumentService = {
 
   updateVerification: async (documentId: number, data: VerifyDocument): Promise<ApiResponse<ApplicantDocument>> => {
     const response = await api.put<ApiResponse<ApplicantDocument>>(`${ADMISSIONS_BASE}/documents/${documentId}`, data);
+    return response.data;
+  },
+
+  getDocuments: async (applicantId: number): Promise<ApiResponse<ApplicantDocument[]>> => {
+    const response = await api.get<ApiResponse<ApplicantDocument[]>>(`${ADMISSIONS_BASE}/applicants/${applicantId}/documents`);
     return response.data;
   },
 };

@@ -1,23 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Layout from '../../components/shared/Layout';
 import PageHeader from '../../components/shared/PageHeader';
 import DataTable from '../../components/shared/tables/DataTable';
 import Button from '../../components/shared/forms/Button';
 import FormModal from '../../components/shared/modals/FormModal';
 import ConfirmModal from '../../components/shared/modals/ConfirmModal';
-import Select from '../../components/shared/forms/Select';
-import { collegeService, departmentService } from '../../api/services';
-import type { Department, CreateDepartment, College } from '../../types';
+import api from '../../api/axios';
+import type { Department } from '../../types';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Departments() {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [colleges, setColleges] = useState<College[]>([]);
+  const [campuses, setCampuses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
-  const [formData, setFormData] = useState<Partial<CreateDepartment>>({});
+  const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
     loadData();
@@ -25,12 +25,12 @@ export default function Departments() {
 
   const loadData = async () => {
     try {
-      const [departmentsRes, collegesRes] = await Promise.all([
-        departmentService.getAll(),
-        collegeService.getAll()
+      const [departmentsRes, campusesRes] = await Promise.all([
+        api.get('/api/v1/departments'),
+        api.get('/api/v1/campuses')
       ]);
       setDepartments(departmentsRes.data.data || []);
-      setColleges(collegesRes.data.data || []);
+      setCampuses(campusesRes.data.data || []);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -40,13 +40,27 @@ export default function Departments() {
 
   const handleCreate = () => {
     setSelectedDepartment(null);
-    setFormData({});
+    setFormData({
+      campus_id: '',
+      name: '',
+      code: '',
+      established_year: new Date().getFullYear(),
+      description: '',
+      is_active: true,
+    });
     setIsModalOpen(true);
   };
 
   const handleEdit = (department: Department) => {
     setSelectedDepartment(department);
-    setFormData(department);
+    setFormData({
+      campus_id: department.campus_id?.toString() || '',
+      name: department.name || '',
+      code: department.code || '',
+      established_year: department.established_year || new Date().getFullYear(),
+      description: department.description || '',
+      is_active: department.is_active ?? true,
+    });
     setIsModalOpen(true);
   };
 
@@ -58,26 +72,35 @@ export default function Departments() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...formData,
+        campus_id: parseInt(formData.campus_id),
+        established_year: parseInt(formData.established_year),
+      };
+
       if (selectedDepartment) {
-        await departmentService.update(selectedDepartment.id, formData);
+        await api.put(`/api/v1/departments/${selectedDepartment.id}`, payload);
+        toast.success('Department updated!');
       } else {
-        await departmentService.create(formData as CreateDepartment);
+        await api.post('/api/v1/departments', payload);
+        toast.success('Department created!');
       }
       setIsModalOpen(false);
       loadData();
-    } catch (error) {
-      console.error('Failed to save department:', error);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to save department');
     }
   };
 
   const handleConfirmDelete = async () => {
     if (selectedDepartment) {
       try {
-        await departmentService.delete(selectedDepartment.id);
+        await api.delete(`/api/v1/departments/${selectedDepartment.id}`);
+        toast.success('Department deleted!');
         setIsDeleteModalOpen(false);
         loadData();
       } catch (error) {
-        console.error('Failed to delete department:', error);
+        toast.error('Failed to delete department');
       }
     }
   };
@@ -94,14 +117,14 @@ export default function Departments() {
       render: (row: Department) => row.code,
     },
     {
-      key: 'college',
-      header: 'College',
-      render: (row: Department) => row.college?.name || 'N/A',
+      key: 'campus',
+      header: 'Campus',
+      render: (row: Department) => row.campus?.name || 'N/A',
     },
     {
-      key: 'hod',
-      header: 'HOD',
-      render: (row: Department) => row.hod?.name || 'Not Assigned',
+      key: 'established_year',
+      header: 'Established',
+      render: (row: Department) => row.established_year,
     },
     {
       key: 'is_active',
@@ -152,8 +175,8 @@ export default function Departments() {
     <Layout>
       <PageHeader
         title="Departments"
-        subtitle="Manage departments across colleges"
-        action={
+        subtitle="Manage departments across campuses"
+        actions={
           <Button
             variant="primary"
             icon={<Plus className="w-4 h-4" />}
@@ -165,8 +188,8 @@ export default function Departments() {
       />
 
       <DataTable
-        data={departments}
-        columns={columns}
+        data={departments as any}
+        columns={columns as any}
         emptyMessage="No departments found"
       />
 
@@ -179,14 +202,18 @@ export default function Departments() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">College</label>
-            <Select
-              value={formData.college_id?.toString() || ''}
-              onChange={(e) => setFormData({ ...formData, college_id: parseInt(e.target.value) })}
-              options={colleges.map(c => ({ value: c.id.toString(), label: c.name }))}
-              placeholder="Select College"
+            <label className="block text-sm font-medium text-gray-700 mb-1">Campus</label>
+            <select
+              className="input-field"
+              value={formData.campus_id || ''}
+              onChange={(e) => setFormData({ ...formData, campus_id: e.target.value })}
               required
-            />
+            >
+              <option value="">Select Campus</option>
+              {campuses.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -209,21 +236,13 @@ export default function Departments() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Established Year</label>
             <input
-              type="text"
+              type="number"
               className="input-field"
-              value={formData.phone || ''}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              className="input-field"
-              value={formData.email || ''}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              value={formData.established_year || ''}
+              onChange={(e) => setFormData({ ...formData, established_year: e.target.value })}
+              required
             />
           </div>
           <div>

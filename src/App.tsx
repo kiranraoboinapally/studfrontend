@@ -17,6 +17,8 @@ import AdminUsers     from "./pages/admin/Users";
 import AdminColleges  from "./pages/admin/Colleges";
 import AdminCourses   from "./pages/admin/Courses";
 import AdmissionCycles from "./pages/admin/AdmissionCycles";
+// import UniversityAdminDashboard from "./pages/admin/UniversityAdminDashboard";
+// import UserManagement from "./pages/admin/UserManagement";
 
 // Finance Pages
 import FinanceDashboard from "./pages/finance/Dashboard";
@@ -48,7 +50,7 @@ import FacultyAttendance from "./pages/faculty/Attendance";
 
 // Student Pages
 import StudentDashboard  from "./pages/student/Dashboard";
-import Apply             from "./pages/student/Apply";
+import ApplyNew          from "./pages/student/ApplyNew";
 import MyApplications    from "./pages/student/Applications";
 import StudentPayments   from "./pages/student/Payments";
 import StudentResults    from "./pages/student/Results";
@@ -59,9 +61,24 @@ import StudentLibrary    from "./pages/student/Library";
 import StudentEvents     from "./pages/student/Events";
 import StudentProfile    from "./pages/student/Profile";
 
+// Admission Portal Pages
+import EnquiryForm from "./pages/admission/EnquiryForm";
+import OTPVerification from "./pages/admission/OTPVerification";
+// import StudentPortalDashboard from "./pages/admission/StudentPortalDashboard";
+// import AdmissionWizard from "./pages/admission/AdmissionWizard";
+// import ApplicationTracking from "./pages/admission/ApplicationTracking";
+// import ScholarshipDashboard from "./pages/admission/ScholarshipDashboard";
+// import PaymentHistory from "./pages/admission/PaymentHistory";
+// import StudentProfilePage from "./pages/admission/StudentProfile";
 
 // Applicant Pages (Pre-enrollment)
 import ApplicantDashboard from "./pages/applicant/Dashboard";
+
+// Admission Team Pages
+import AdmissionTeamDashboard from "./pages/admission/AdmissionTeamDashboard";
+
+// Finance Team Pages
+import FinanceTeamDashboard from "./pages/finance/FinanceTeamDashboard";
 
 // Shared
 import Notifications from "./pages/Notifications";
@@ -103,8 +120,12 @@ function AppRoutes() {
       <Route path="/login"           element={<Login />} />
       <Route path="/register"        element={<Register />} />
       
+      {/* Public - Admission Portal */}
+      <Route path="/admission/enquiry" element={<EnquiryForm />} />
+      <Route path="/admission/otp" element={<OTPVerification />} />
+      
       {/* Public - Application Form (checks sessionStorage for applicant info) */}
-      <Route path="/apply" element={<Apply />} />
+      <Route path="/apply" element={<ApplyNew />} />
       <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/applicant/dashboard" element={<ApplicantDashboard />} />
       <Route path="/forgot-password"    element={<ForgotPassword />} />
@@ -162,6 +183,11 @@ function AppRoutes() {
           <AdmissionCycles />
         </ProtectedRoute>
       } />
+      <Route path="/admission/team" element={
+        <ProtectedRoute roleIds={[1, 8]}> {/* university_admin, admission_team */}
+          <AdmissionTeamDashboard />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/payments" element={
         <ProtectedRoute roleIds={adminRoles}>
           <FinancePaymentsPage />
@@ -172,6 +198,11 @@ function AppRoutes() {
       <Route path="/finance/dashboard" element={
         <ProtectedRoute roleIds={financeRoles}>
           <FinanceDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/finance/team" element={
+        <ProtectedRoute roleIds={financeRoles}>
+          <FinanceTeamDashboard />
         </ProtectedRoute>
       } />
       <Route path="/finance/fees" element={

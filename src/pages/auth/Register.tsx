@@ -1,15 +1,32 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Mail, Phone, ArrowRight, CheckCircle, RefreshCw,
-  Smartphone, FileText, Clock, User, Sparkles,
-  GraduationCap, CheckCheck, CalendarDays, MapPin, Search
+  Mail,
+  Phone,
+  ArrowRight,
+  CheckCircle,
+  RefreshCw,
+  Smartphone,
+  FileText,
+  Clock,
+  User,
+  Sparkles,
+  GraduationCap,
+  CheckCheck,
+  CalendarDays,
+  MapPin,
+  Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../api/axios";
 
-
-type Step = "contact" | "verify-email" | "verify-phone" | "success" | "continue" | "status";
+type Step =
+  | "contact"
+  | "verify-email"
+  | "verify-phone"
+  | "success"
+  | "continue"
+  | "status";
 
 interface RegistrationData {
   email: string;
@@ -56,7 +73,9 @@ export default function Register() {
   const [countdown, setCountdown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
 
-  const [admissionCycle, setAdmissionCycle] = useState<AdmissionCycle | null>(null);
+  const [admissionCycle, setAdmissionCycle] = useState<AdmissionCycle | null>(
+    null,
+  );
   const [upcomingCycles, setUpcomingCycles] = useState<any[]>([]);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const [admissionsLoading, setAdmissionsLoading] = useState(true);
@@ -85,7 +104,7 @@ export default function Register() {
     backgroundImage: [
       "radial-gradient(circle at 95% 5%, rgba(255,220,210,0.28) 0%, rgba(255,220,210,0.12) 12%, rgba(255,220,210,0.03) 28%, transparent 45%)",
       "linear-gradient(135deg, #7a1d16 0%, #650C08 35%, #b77a6f 100%)",
-      "repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1.5px, transparent 1.5px, transparent 18px)"
+      "repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1.5px, transparent 1.5px, transparent 18px)",
     ].join(", "),
     backgroundBlendMode: "overlay, normal, normal" as const,
   };
@@ -94,42 +113,56 @@ export default function Register() {
     const checkAdmissions = async () => {
       setAdmissionsLoading(true);
       try {
-        const res = await api.get("/admissions/active-cycle");
+        const res = await api.get("/api/v1/admissions/cycles/open");
         const responseData = res.data.data;
 
-        if (responseData?.active_cycle) {
-          const cycle = responseData.active_cycle;
-          setAdmissionCycle({
-            id: cycle.ID,
-            name: cycle.Name,
-            description: cycle.Description,
-            application_start_date: cycle.ApplicationStartDate,
-            application_end_date: cycle.ApplicationEndDate,
-            application_fee: cycle.ApplicationFee,
-            admission_fee: cycle.AdmissionFee,
-            max_applications: cycle.MaxApplications,
-            is_open: responseData.has_open || false,
-            days_until_close: responseData.cycles?.[0]?.days_until_close || 0,
-            status: responseData.cycles?.[0]?.status || "closed",
-            program: cycle.Program ? {
-              name: cycle.Program.name,
-              code: cycle.Program.code,
-              degree_type: cycle.Program.degree_type,
-              duration_years: cycle.Program.duration_years,
-              total_seats: cycle.Program.total_seats,
-            } : null,
-            college: cycle.College ? {
-              name: cycle.College.name,
-              short_name: cycle.College.short_name,
-              city: cycle.College.city,
-            } : null,
-            academic_year: cycle.AcademicYear ? {
-              year_label: cycle.AcademicYear.YearLabel,
-            } : null,
-          });
-        }
+        if (Array.isArray(responseData) && responseData.length > 0) {
+  const cycle = responseData[0];
 
-        setUpcomingCycles(responseData?.cycles?.filter((c: any) => c.status === "upcoming") || []);
+  setAdmissionCycle({
+    id: cycle.id,
+    name: cycle.name,
+    description: "",
+    application_start_date: cycle.application_start,
+    application_end_date: cycle.application_end,
+    application_fee: cycle.application_fee,
+    admission_fee: 0,
+    max_applications: cycle.max_applications,
+    is_open: cycle.is_open,
+    days_until_close: 0,
+    status: cycle.is_open ? "open" : "closed",
+    program: null,
+    college: null,
+    academic_year: {
+      year_label: cycle.academic_year
+    }
+  });
+}
+
+        // Filter cycles to only show those that are actually open based on date
+        const now = new Date();
+        setUpcomingCycles(
+          (responseData?.cycles || [])
+            .filter((c: any) => {
+              const endDate = new Date(
+                c.ApplicationEndDate || c.application_end,
+              );
+              return c.status === "upcoming" || (c.is_open && now <= endDate);
+            })
+            .map((c: any) => ({
+              ...c,
+              days_until_close: Math.max(
+                0,
+                Math.ceil(
+                  (new Date(
+                    c.ApplicationEndDate || c.application_end,
+                  ).getTime() -
+                    now.getTime()) /
+                    (1000 * 60 * 60 * 24),
+                ),
+              ),
+            })),
+        );
       } catch (err) {
         console.error("Failed to fetch admissions:", err);
         setAdmissionCycle(null);
@@ -146,8 +179,11 @@ export default function Register() {
       const email = sessionStorage.getItem("registeredEmail");
       if (!existingAppId || !email) return;
       try {
-        const res = await api.get(`/auth/application-status?application_id=${existingAppId}&email=${email}`);
-        const status = res.data.data?.Status || res.data.data?.status || "draft";
+        const res = await api.get(
+          `/api/v1/auth/application-status?application_id=${existingAppId}&email=${email}`,
+        );
+        const status =
+          res.data.data?.Status || res.data.data?.status || "draft";
         if (status.toLowerCase() !== "draft") setApplicationSubmitted(true);
       } catch (err) {
         console.error(err);
@@ -177,12 +213,20 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const res = await api.get(`/auth/application-status?application_id=${continueData.appId}&email=${continueData.email}`);
+      const res = await api.get(
+        `/api/v1/auth/application-status?application_id=${continueData.appId}&email=${continueData.email}`,
+      );
       sessionStorage.setItem("registeredApplicantId", continueData.appId);
       sessionStorage.setItem("registeredEmail", continueData.email);
       sessionStorage.setItem("registeredPhone", res.data.data?.phone || "");
-      sessionStorage.setItem("registeredFirstName", res.data.data?.first_name || "");
-      sessionStorage.setItem("registeredLastName", res.data.data?.last_name || "");
+      sessionStorage.setItem(
+        "registeredFirstName",
+        res.data.data?.first_name || "",
+      );
+      sessionStorage.setItem(
+        "registeredLastName",
+        res.data.data?.last_name || "",
+      );
       toast.success("Application found! Redirecting...");
       navigate("/apply");
     } catch (err: any) {
@@ -205,8 +249,8 @@ export default function Register() {
     setLoading(true);
     try {
       await Promise.all([
-        api.post("/auth/send-otp", { email: data.email, type: "email" }),
-        api.post("/auth/send-otp", { phone: data.phone, type: "phone" })
+        api.post("/api/v1/auth/send-otp", { email: data.email, type: "email" }),
+        api.post("/api/v1/auth/send-otp", { phone: data.phone, type: "phone" }),
       ]);
       toast.success("OTPs sent successfully!");
       setStep("verify-email");
@@ -226,10 +270,16 @@ export default function Register() {
     setResendLoading(true);
     try {
       if (type === "email") {
-        await api.post("/auth/send-otp", { email: data.email, type: "email" });
+        await api.post("/api/v1/auth/send-otp", {
+          email: data.email,
+          type: "email",
+        });
         toast.success("Email OTP resent!");
       } else {
-        await api.post("/auth/send-otp", { phone: data.phone, type: "phone" });
+        await api.post("/api/v1/auth/send-otp", {
+          phone: data.phone,
+          type: "phone",
+        });
         toast.success("Phone OTP resent!");
       }
       setCountdown(60);
@@ -248,7 +298,11 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await api.post("/auth/verify-otp", { email: data.email, otp: data.emailOtp, type: "email" });
+      await api.post("/api/v1/auth/verify-otp", {
+        email: data.email,
+        otp: data.emailOtp,
+        type: "email",
+      });
       toast.success("Email verified successfully!");
       setStep("verify-phone");
     } catch (err: any) {
@@ -266,19 +320,23 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await api.post("/auth/verify-otp", { phone: data.phone, otp: data.phoneOtp, type: "phone" });
-      const res = await api.post("/auth/register-applicant", {
-        email: data.email,
+      await api.post("/api/v1/auth/verify-otp", {
         phone: data.phone,
-        first_name: data.firstName,
-        last_name: data.lastName,
+        otp: data.phoneOtp,
+        type: "phone",
+      });
+      const res = await api.post("/api/v1/auth/register", {
+        username: data.email.split("@")[0], // Use email prefix as username
+        email: data.email,
+        password: "Default@123", // Default password, user should change later
+        role_name: "student", // Default role
       });
       toast.success("Registration successful!");
       sessionStorage.setItem("registeredEmail", data.email);
       sessionStorage.setItem("registeredPhone", data.phone);
       sessionStorage.setItem("registeredFirstName", data.firstName);
       sessionStorage.setItem("registeredLastName", data.lastName);
-      sessionStorage.setItem("registeredApplicantId", res.data.data.applicant_id);
+      sessionStorage.setItem("registeredApplicantId", res.data.user_id);
       setStep("success");
     } catch (err: any) {
       toast.error(err.response?.data?.error || "Registration failed");
@@ -292,7 +350,9 @@ export default function Register() {
     setStatusLoading(true);
     setStatusData(null);
     try {
-      const res = await api.get(`/auth/application-status?application_id=${statusAppId}&email=${statusEmail}`);
+      const res = await api.get(
+        `/api/v1/auth/application-status?application_id=${statusAppId}&email=${statusEmail}`,
+      );
       setStatusData(res.data.data);
       toast.success("Status found!");
     } catch (err: any) {
@@ -305,19 +365,20 @@ export default function Register() {
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
+    return date.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
   };
 
   const getDaysRemaining = (endDate: string) => {
+    if (!endDate) return 0;
     const end = new Date(endDate);
     const today = new Date();
     const diffTime = end.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    return Math.max(0, diffDays);
   };
 
   const steps = [
@@ -326,7 +387,9 @@ export default function Register() {
     { id: "verify-phone", label: "Verify Phone", icon: Smartphone },
   ];
 
-  const currentStepIndex = steps.findIndex(st => st.id === (step === "success" ? "verify-phone" : step));
+  const currentStepIndex = steps.findIndex(
+    (st) => st.id === (step === "success" ? "verify-phone" : step),
+  );
 
   if (admissionsLoading) {
     return (
@@ -345,15 +408,28 @@ export default function Register() {
         <div className="w-full max-w-6xl min-h-[620px] rounded-2xl shadow-2xl overflow-hidden flex flex-col lg:flex-row">
           <div className="w-full lg:w-[35%] bg-gray-100 flex flex-col items-center justify-center p-10 text-center">
             <div className="w-36 h-36 rounded-full overflow-hidden shadow-2xl border-8 border-white">
-              <img src="/Logo.png" alt="S University" className="w-full h-full object-contain" />
+              <img
+                src="/Logo.png"
+                alt="S University"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <h1 className="mt-8 text-4xl font-bold text-gray-800 tracking-wide">S University</h1>
-            <p className="mt-4 text-sm text-gray-500">Pacheri Bari, Jhunjhunu - 333515</p>
+            <h1 className="mt-8 text-4xl font-bold text-gray-800 tracking-wide">
+              S University
+            </h1>
+            <p className="mt-4 text-sm text-gray-500">
+              Pacheri Bari, Jhunjhunu - 333515
+            </p>
             <p className="text-sm text-gray-500">Rajasthan, India</p>
-            <div className="mt-10 text-gray-600 font-medium">Application Status Portal</div>
+            <div className="mt-10 text-gray-600 font-medium">
+              Application Status Portal
+            </div>
           </div>
 
-          <div className="w-full lg:w-[65%] flex flex-col justify-center p-8 lg:p-12 text-white" style={rightPanelGradient}>
+          <div
+            className="w-full lg:w-[65%] flex flex-col justify-center p-8 lg:p-12 text-white"
+            style={rightPanelGradient}
+          >
             <div className="max-w-md mx-auto w-full">
               <h2 className="text-4xl font-extrabold text-rose-100 text-center mb-10">
                 TRACK STATUS
@@ -364,20 +440,28 @@ export default function Register() {
                   <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Search className="w-10 h-10 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900">Check Application Status</h3>
-                  <p className="text-gray-500 text-sm mt-2">Enter your credentials to track your application</p>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    Check Application Status
+                  </h3>
+                  <p className="text-gray-500 text-sm mt-2">
+                    Enter your credentials to track your application
+                  </p>
                 </div>
 
                 <form onSubmit={checkStatus} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Application ID</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Application ID
+                    </label>
                     <div className="relative">
                       <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
                         type="text"
                         required
                         value={statusAppId}
-                        onChange={(e) => setStatusAppId(e.target.value.toUpperCase())}
+                        onChange={(e) =>
+                          setStatusAppId(e.target.value.toUpperCase())
+                        }
                         placeholder="APP-2026-XXXX"
                         className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all"
                       />
@@ -385,7 +469,9 @@ export default function Register() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email Address
+                    </label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
@@ -407,7 +493,9 @@ export default function Register() {
                     {statusLoading ? (
                       <RefreshCw className="w-5 h-5 animate-spin" />
                     ) : (
-                      <>Check Status <ArrowRight className="w-5 h-5" /></>
+                      <>
+                        Check Status <ArrowRight className="w-5 h-5" />
+                      </>
                     )}
                   </button>
                 </form>
@@ -421,25 +509,39 @@ export default function Register() {
                       <h4 className="text-xl font-bold text-gray-900">
                         {statusData.first_name} {statusData.last_name}
                       </h4>
-                      <p className="text-gray-600 text-sm mt-1">{statusData.program?.name || "Application"}</p>
+                      <p className="text-gray-600 text-sm mt-1">
+                        {statusData.program?.name || "Application"}
+                      </p>
                       <div className="mt-4 inline-flex px-4 py-2 rounded-full text-sm font-bold bg-primary-100 text-primary-700">
                         {statusData.status?.toUpperCase() || "PENDING"}
                       </div>
                       {statusData.remarks && (
-                        <p className="text-gray-600 text-sm mt-4 italic">"{statusData.remarks}"</p>
+                        <p className="text-gray-600 text-sm mt-4 italic">
+                          "{statusData.remarks}"
+                        </p>
                       )}
                     </div>
                   </div>
                 )}
 
-                <button onClick={() => setStep("contact")} className="w-full text-primary-600 font-medium py-3 hover:text-primary-700 transition-colors mt-4">
+                <button
+                  onClick={() => setStep("contact")}
+                  className="w-full text-primary-600 font-medium py-3 hover:text-primary-700 transition-colors mt-4"
+                >
                   ← Back to Registration
                 </button>
               </div>
 
               <div className="mt-10 text-center text-sm opacity-90">
-                <p>ERP • Powered by <span className="font-bold">SlashCurate Technologies Pvt Ltd</span></p>
-                <p className="mt-2">© 2025 S University. All rights reserved.</p>
+                <p>
+                  ERP • Powered by{" "}
+                  <span className="font-bold">
+                    SlashCurate Technologies Pvt Ltd
+                  </span>
+                </p>
+                <p className="mt-2">
+                  © 2025 S University. All rights reserved.
+                </p>
               </div>
             </div>
           </div>
@@ -448,28 +550,48 @@ export default function Register() {
     );
   }
 
-  if (!admissionCycle && upcomingCycles.length === 0) {
+  if (!admissionCycle || !admissionCycle.is_open) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-6">
         <div className="w-full max-w-6xl min-h-[620px] rounded-2xl shadow-2xl overflow-hidden flex flex-col lg:flex-row">
           <div className="w-full lg:w-[35%] bg-gray-100 flex flex-col items-center justify-center p-10 text-center">
             <div className="w-36 h-36 rounded-full overflow-hidden shadow-2xl border-8 border-white">
-              <img src="/Logo.png" alt="S University" className="w-full h-full object-contain" />
+              <img
+                src="/Logo.png"
+                alt="S University"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <h1 className="mt-8 text-4xl font-bold text-gray-800 tracking-wide">S University</h1>
-            <p className="mt-4 text-sm text-gray-500">Pacheri Bari, Jhunjhunu - 333515</p>
+            <h1 className="mt-8 text-4xl font-bold text-gray-800 tracking-wide">
+              S University
+            </h1>
+            <p className="mt-4 text-sm text-gray-500">
+              Pacheri Bari, Jhunjhunu - 333515
+            </p>
             <p className="text-sm text-gray-500">Rajasthan, India</p>
-            <div className="mt-10 text-gray-600 font-medium">Admission Portal</div>
+            <div className="mt-10 text-gray-600 font-medium">
+              Admission Portal
+            </div>
           </div>
 
-          <div className="w-full lg:w-[65%] flex flex-col justify-center p-8 lg:p-12 text-white" style={rightPanelGradient}>
+          <div
+            className="w-full lg:w-[65%] flex flex-col justify-center p-8 lg:p-12 text-white"
+            style={rightPanelGradient}
+          >
             <div className="max-w-md mx-auto w-full text-center">
               <div className="w-28 h-28 bg-amber-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
                 <Clock className="w-14 h-14 text-amber-400" />
               </div>
-              <h2 className="text-3xl font-bold text-white mb-3">Admissions Closed</h2>
-              <p className="text-white/80 mb-8">No active admission cycles are available at this moment.</p>
-              <button onClick={() => setStep("status")} className="px-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl font-semibold transition-all">
+              <h2 className="text-3xl font-bold text-white mb-3">
+                Admissions Closed
+              </h2>
+              <p className="text-white/80 mb-8">
+                No active admission cycles are available at this moment.
+              </p>
+              <button
+                onClick={() => setStep("status")}
+                className="px-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl font-semibold transition-all"
+              >
                 Track Your Application Status
               </button>
             </div>
@@ -482,16 +604,21 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-6">
       <div className="w-full max-w-6xl min-h-[620px] rounded-2xl shadow-2xl overflow-hidden flex flex-col lg:flex-row">
-
         {/* LEFT PANEL - Enhanced */}
         <div className="w-full lg:w-[35%] bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary-100/20 to-transparent rounded-full -mr-32 -mt-32"></div>
 
           <div className="relative z-10">
             <div className="w-32 h-32 rounded-2xl overflow-hidden shadow-xl bg-white p-3 mx-auto transform transition-transform hover:scale-105">
-              <img src="/Logo.png" alt="S University" className="w-full h-full object-contain" />
+              <img
+                src="/Logo.png"
+                alt="S University"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <h1 className="mt-6 text-3xl font-bold text-gray-800">S University</h1>
+            <h1 className="mt-6 text-3xl font-bold text-gray-800">
+              S University
+            </h1>
             <div className="flex items-center justify-center gap-2 mt-2 text-gray-500 text-sm">
               <MapPin className="w-4 h-4" />
               <span>Jhunjhunu, Rajasthan</span>
@@ -502,9 +629,13 @@ export default function Register() {
               <div className="mt-6 p-4 bg-white rounded-xl shadow-md border border-gray-200">
                 <div className="flex items-center gap-2 text-amber-600 mb-2">
                   <Sparkles className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-wide">Active Admission Cycle</span>
+                  <span className="text-xs font-bold uppercase tracking-wide">
+                    Active Admission Cycle
+                  </span>
                 </div>
-                <h3 className="font-bold text-gray-800 text-base">{admissionCycle.name}</h3>
+                <h3 className="font-bold text-gray-800 text-base">
+                  {admissionCycle.name}
+                </h3>
                 {admissionCycle.program && (
                   <div className="flex items-center gap-1 mt-1 text-gray-600 text-xs">
                     <GraduationCap className="w-3 h-3" />
@@ -514,14 +645,22 @@ export default function Register() {
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500">Last Date:</span>
-                    <span className="font-semibold text-red-600">{formatDate(admissionCycle.application_end_date)}</span>
+                    <span className="font-semibold text-red-600">
+                      {formatDate(admissionCycle.application_end_date)}
+                    </span>
                   </div>
-                  {getDaysRemaining(admissionCycle.application_end_date) > 0 && (
-                    <div className="flex items-center justify-between text-sm mt-1">
-                      <span className="text-gray-500">Days Left:</span>
-                      <span className="font-bold text-amber-600">{getDaysRemaining(admissionCycle.application_end_date)} days</span>
-                    </div>
-                  )}
+                  {getDaysRemaining(admissionCycle.application_end_date) > 0 &&
+                    admissionCycle.is_open && (
+                      <div className="flex items-center justify-between text-sm mt-1">
+                        <span className="text-gray-500">Days Left:</span>
+                        <span className="font-bold text-amber-600">
+                          {getDaysRemaining(
+                            admissionCycle.application_end_date,
+                          )}{" "}
+                          days
+                        </span>
+                      </div>
+                    )}
                 </div>
               </div>
             )}
@@ -529,7 +668,10 @@ export default function Register() {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="w-full lg:w-[65%] flex flex-col justify-center p-8 lg:p-12 text-white" style={rightPanelGradient}>
+        <div
+          className="w-full lg:w-[65%] flex flex-col justify-center p-8 lg:p-12 text-white"
+          style={rightPanelGradient}
+        >
           <div className="max-w-md mx-auto w-full">
             <h2 className="text-4xl font-extrabold text-rose-100 text-center mb-8">
               NEW ADMISSION
@@ -546,17 +688,32 @@ export default function Register() {
                         const isActive = step === s.id;
                         const isCompleted = currentStepIndex > i;
                         return (
-                          <div key={s.id} className="flex flex-col items-center relative z-10">
-                            <div className={`
+                          <div
+                            key={s.id}
+                            className="flex flex-col items-center relative z-10"
+                          >
+                            <div
+                              className={`
                               w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300
-                              ${isCompleted ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md" :
-                                isActive ? "bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg scale-110" :
-                                  "bg-gray-100 text-gray-400 border-2 border-gray-200"}
-                            `}>
-                              {isCompleted ? <CheckCircle className="w-6 h-6" /> : <Icon className="w-6 h-6" />}
+                              ${
+                                isCompleted
+                                  ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md"
+                                  : isActive
+                                    ? "bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg scale-110"
+                                    : "bg-gray-100 text-gray-400 border-2 border-gray-200"
+                              }
+                            `}
+                            >
+                              {isCompleted ? (
+                                <CheckCircle className="w-6 h-6" />
+                              ) : (
+                                <Icon className="w-6 h-6" />
+                              )}
                             </div>
-                            <span className={`text-xs font-semibold mt-2 transition-colors duration-300
-                              ${isActive ? "text-primary-600" : "text-gray-500"}`}>
+                            <span
+                              className={`text-xs font-semibold mt-2 transition-colors duration-300
+                              ${isActive ? "text-primary-600" : "text-gray-500"}`}
+                            >
                               {s.label}
                             </span>
                           </div>
@@ -566,7 +723,9 @@ export default function Register() {
                     <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 -z-0">
                       <div
                         className="h-full bg-gradient-to-r from-primary-600 to-primary-700 transition-all duration-500"
-                        style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                        style={{
+                          width: `${(currentStepIndex / (steps.length - 1)) * 100}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -576,47 +735,73 @@ export default function Register() {
                 {step === "contact" && (
                   <form onSubmit={handleSendOtps} className="space-y-4">
                     {/* Last Date Banner */}
-                    {admissionCycle && (
+                    {admissionCycle && admissionCycle.is_open && (
                       <div className="mb-4 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <CalendarDays className="w-4 h-4 text-amber-600" />
-                            <span className="text-xs font-semibold text-amber-700">Last Date to Apply:</span>
+                            <span className="text-xs font-semibold text-amber-700">
+                              Last Date to Apply:
+                            </span>
                           </div>
-                          <span className="text-sm font-bold text-red-600">{formatDate(admissionCycle.application_end_date)}</span>
+                          <span className="text-sm font-bold text-red-600">
+                            {formatDate(admissionCycle.application_end_date)}
+                          </span>
                         </div>
                       </div>
                     )}
 
-                    {sessionStorage.getItem("registeredApplicantId") && !applicationSubmitted && (
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-semibold text-blue-900 text-sm">Active Application Found</p>
-                            <p className="text-xs text-blue-700 font-mono">{sessionStorage.getItem("registeredApplicantId")}</p>
+                    {sessionStorage.getItem("registeredApplicantId") &&
+                      !applicationSubmitted && (
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="font-semibold text-blue-900 text-sm">
+                                Active Application Found
+                              </p>
+                              <p className="text-xs text-blue-700 font-mono">
+                                {sessionStorage.getItem(
+                                  "registeredApplicantId",
+                                )}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleContinueToApply}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                            >
+                              Continue →
+                            </button>
                           </div>
-                          <button type="button" onClick={handleContinueToApply} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all">Continue →</button>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     <div className="text-center mb-4">
                       <div className="w-16 h-16 bg-gradient-to-br from-primary-100 to-primary-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
                         <User className="w-8 h-8 text-primary-600" />
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900">Create Account</h3>
-                      <p className="text-gray-500 text-sm mt-1">Enter your details to begin your application</p>
+                      <h3 className="text-2xl font-bold text-gray-900">
+                        Create Account
+                      </h3>
+                      <p className="text-gray-500 text-sm mt-1">
+                        Enter your details to begin your application
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">First Name</label>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">
+                          First Name
+                        </label>
                         <input
                           type="text"
                           required
                           value={data.firstName}
                           onChange={(e) => {
-                            const value = e.target.value.replace(/[^a-zA-Z]/g, "");
+                            const value = e.target.value.replace(
+                              /[^a-zA-Z]/g,
+                              "",
+                            );
                             setData({ ...data, firstName: value });
                           }}
                           className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all"
@@ -624,13 +809,18 @@ export default function Register() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">Last Name</label>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">
+                          Last Name
+                        </label>
                         <input
                           type="text"
                           required
                           value={data.lastName}
                           onChange={(e) => {
-                            const value = e.target.value.replace(/[^a-zA-Z]/g, "");
+                            const value = e.target.value.replace(
+                              /[^a-zA-Z]/g,
+                              "",
+                            );
                             setData({ ...data, lastName: value });
                           }}
                           className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all"
@@ -640,7 +830,9 @@ export default function Register() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">Email Address</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">
+                        Email Address
+                      </label>
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
@@ -661,7 +853,9 @@ export default function Register() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">Mobile Number</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">
+                        Mobile Number
+                      </label>
                       <div className="relative">
                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
@@ -669,7 +863,12 @@ export default function Register() {
                           required
                           maxLength={10}
                           value={data.phone}
-                          onChange={(e) => setData({ ...data, phone: e.target.value.replace(/\D/g, "") })}
+                          onChange={(e) =>
+                            setData({
+                              ...data,
+                              phone: e.target.value.replace(/\D/g, ""),
+                            })
+                          }
                           className="w-full pl-12 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all"
                           placeholder="9876543210"
                         />
@@ -681,7 +880,13 @@ export default function Register() {
                       disabled={loading}
                       className="w-full py-3 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                     >
-                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <>Continue <ArrowRight className="w-5 h-5" /></>}
+                      {loading ? (
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          Continue <ArrowRight className="w-5 h-5" />
+                        </>
+                      )}
                     </button>
 
                     <button
@@ -704,7 +909,9 @@ export default function Register() {
                       <h3 className="text-2xl font-bold">Verify Email</h3>
                       <p className="text-gray-500 text-sm mt-2">
                         Enter 6-digit code sent to <br />
-                        <span className="font-semibold text-gray-900">{data.email}</span>
+                        <span className="font-semibold text-gray-900">
+                          {data.email}
+                        </span>
                       </p>
                     </div>
 
@@ -713,7 +920,14 @@ export default function Register() {
                         type="text"
                         maxLength={6}
                         value={data.emailOtp}
-                        onChange={(e) => setData({ ...data, emailOtp: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                        onChange={(e) =>
+                          setData({
+                            ...data,
+                            emailOtp: e.target.value
+                              .replace(/\D/g, "")
+                              .slice(0, 6),
+                          })
+                        }
                         className="w-full text-center text-3xl font-mono font-bold tracking-[0.3em] py-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                         placeholder="000000"
                         autoFocus
@@ -735,7 +949,9 @@ export default function Register() {
                         disabled={resendLoading || countdown > 0}
                         className="text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
                       >
-                        {countdown > 0 ? `Resend OTP in ${countdown}s` : "Resend OTP"}
+                        {countdown > 0
+                          ? `Resend OTP in ${countdown}s`
+                          : "Resend OTP"}
                       </button>
                     </div>
                   </form>
@@ -751,7 +967,9 @@ export default function Register() {
                       <h3 className="text-2xl font-bold">Verify Phone</h3>
                       <p className="text-gray-500 text-sm mt-2">
                         Enter 6-digit code sent to <br />
-                        <span className="font-semibold text-gray-900">+91 {data.phone}</span>
+                        <span className="font-semibold text-gray-900">
+                          +91 {data.phone}
+                        </span>
                       </p>
                     </div>
 
@@ -760,7 +978,14 @@ export default function Register() {
                         type="text"
                         maxLength={6}
                         value={data.phoneOtp}
-                        onChange={(e) => setData({ ...data, phoneOtp: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                        onChange={(e) =>
+                          setData({
+                            ...data,
+                            phoneOtp: e.target.value
+                              .replace(/\D/g, "")
+                              .slice(0, 6),
+                          })
+                        }
                         className="w-full text-center text-3xl font-mono font-bold tracking-[0.3em] py-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
                         placeholder="000000"
                         autoFocus
@@ -782,7 +1007,9 @@ export default function Register() {
                         disabled={resendLoading || countdown > 0}
                         className="text-sm text-green-600 hover:text-green-700 disabled:opacity-50 font-medium"
                       >
-                        {countdown > 0 ? `Resend OTP in ${countdown}s` : "Resend OTP"}
+                        {countdown > 0
+                          ? `Resend OTP in ${countdown}s`
+                          : "Resend OTP"}
                       </button>
                     </div>
                   </form>
@@ -794,13 +1021,23 @@ export default function Register() {
                     <div className="w-24 h-24 bg-gradient-to-br from-green-100 to-green-200 rounded-full flex items-center justify-center mx-auto mb-6">
                       <CheckCheck className="w-12 h-12 text-green-600" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900">Registration Complete!</h3>
-                    <p className="text-gray-500 text-sm mt-2 mb-6">Your email and phone have been verified successfully.</p>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      Registration Complete!
+                    </h3>
+                    <p className="text-gray-500 text-sm mt-2 mb-6">
+                      Your email and phone have been verified successfully.
+                    </p>
 
                     <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl p-5 mb-6">
-                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Application ID</p>
-                      <p className="text-2xl font-mono font-bold text-primary-700 mt-1">{sessionStorage.getItem("registeredApplicantId")}</p>
-                      <p className="text-xs text-gray-500 mt-2">⚠️ Please save this ID for future reference</p>
+                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                        Application ID
+                      </p>
+                      <p className="text-2xl font-mono font-bold text-primary-700 mt-1">
+                        {sessionStorage.getItem("registeredApplicantId")}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        ⚠️ Please save this ID for future reference
+                      </p>
                     </div>
 
                     <button
@@ -814,24 +1051,36 @@ export default function Register() {
 
                 {/* RESUME APPLICATION STEP */}
                 {step === "continue" && (
-                  <form onSubmit={handleResumeApplication} className="space-y-5">
+                  <form
+                    onSubmit={handleResumeApplication}
+                    className="space-y-5"
+                  >
                     <div className="text-center mb-4">
                       <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <FileText className="w-10 h-10 text-purple-600" />
                       </div>
                       <h3 className="text-2xl font-bold">Resume Application</h3>
-                      <p className="text-gray-500 text-sm mt-1">Enter your Application ID and registered Email</p>
+                      <p className="text-gray-500 text-sm mt-1">
+                        Enter your Application ID and registered Email
+                      </p>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">Application ID</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">
+                        Application ID
+                      </label>
                       <div className="relative">
                         <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                           type="text"
                           required
                           value={continueData.appId}
-                          onChange={(e) => setContinueData({ ...continueData, appId: e.target.value.toUpperCase() })}
+                          onChange={(e) =>
+                            setContinueData({
+                              ...continueData,
+                              appId: e.target.value.toUpperCase(),
+                            })
+                          }
                           className="w-full pl-12 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all font-mono"
                           placeholder="APP-2026-XXXX"
                         />
@@ -839,14 +1088,21 @@ export default function Register() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">Email Address</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">
+                        Email Address
+                      </label>
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                           type="email"
                           required
                           value={continueData.email}
-                          onChange={(e) => setContinueData({ ...continueData, email: e.target.value })}
+                          onChange={(e) =>
+                            setContinueData({
+                              ...continueData,
+                              email: e.target.value,
+                            })
+                          }
                           className="w-full pl-12 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
                           placeholder="john@example.com"
                         />
@@ -858,7 +1114,11 @@ export default function Register() {
                       disabled={loading}
                       className="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
                     >
-                      {loading ? <RefreshCw className="w-5 h-5 animate-spin mx-auto" /> : "Continue Application"}
+                      {loading ? (
+                        <RefreshCw className="w-5 h-5 animate-spin mx-auto" />
+                      ) : (
+                        "Continue Application"
+                      )}
                     </button>
 
                     <button
@@ -873,7 +1133,10 @@ export default function Register() {
 
                 {/* Status Link */}
                 <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-                  <button onClick={() => setStep("status")} className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors">
+                  <button
+                    onClick={() => setStep("status")}
+                    className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                  >
                     Track Application Status →
                   </button>
                 </div>
@@ -882,7 +1145,12 @@ export default function Register() {
 
             {/* Footer */}
             <div className="mt-8 text-center text-xs opacity-80">
-              <p>ERP System • Powered by <span className="font-bold">SlashCurate Technologies Pvt Ltd</span></p>
+              <p>
+                ERP System • Powered by{" "}
+                <span className="font-bold">
+                  SlashCurate Technologies Pvt Ltd
+                </span>
+              </p>
               <p className="mt-1">© 2025 S University. All rights reserved.</p>
             </div>
           </div>

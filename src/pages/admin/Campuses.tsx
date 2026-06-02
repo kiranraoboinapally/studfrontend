@@ -1,23 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Layout from '../../components/shared/Layout';
 import PageHeader from '../../components/shared/PageHeader';
 import DataTable from '../../components/shared/tables/DataTable';
 import Button from '../../components/shared/forms/Button';
 import FormModal from '../../components/shared/modals/FormModal';
 import ConfirmModal from '../../components/shared/modals/ConfirmModal';
-import Select from '../../components/shared/forms/Select';
-import { universityService } from '../../api/services';
-import type { Campus, CreateCampus, University } from '../../types';
+import api from '../../api/axios';
+import type { Campus } from '../../types';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Campuses() {
   const [campuses, setCampuses] = useState<Campus[]>([]);
-  const [universities, setUniversities] = useState<University[]>([]);
+  const [universities, setUniversities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCampus, setSelectedCampus] = useState<Campus | null>(null);
-  const [formData, setFormData] = useState<Partial<CreateCampus>>({});
+  const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
     loadData();
@@ -26,10 +26,8 @@ export default function Campuses() {
   const loadData = async () => {
     try {
       const [campusesRes, universitiesRes] = await Promise.all([
-        // Note: campuses service would need to be added to coreService
-        // For now, using a placeholder
-        Promise.resolve({ data: { data: [] } }),
-        universityService.getAll()
+        api.get('/api/v1/campuses'),
+        api.get('/api/v1/universities')
       ]);
       setCampuses(campusesRes.data.data || []);
       setUniversities(universitiesRes.data.data || []);
@@ -42,13 +40,35 @@ export default function Campuses() {
 
   const handleCreate = () => {
     setSelectedCampus(null);
-    setFormData({});
+    setFormData({
+      university_id: '',
+      name: '',
+      code: '',
+      address: '',
+      city: '',
+      state: '',
+      postal_code: '',
+      phone: '',
+      is_main_campus: false,
+      is_active: true,
+    });
     setIsModalOpen(true);
   };
 
   const handleEdit = (campus: Campus) => {
     setSelectedCampus(campus);
-    setFormData(campus);
+    setFormData({
+      university_id: campus.university_id?.toString() || '',
+      name: campus.name || '',
+      code: campus.code || '',
+      address: campus.address || '',
+      city: campus.city || '',
+      state: campus.state || '',
+      postal_code: campus.postal_code || '',
+      phone: campus.phone || '',
+      is_main_campus: campus.is_main_campus || false,
+      is_active: campus.is_active ?? true,
+    });
     setIsModalOpen(true);
   };
 
@@ -59,16 +79,36 @@ export default function Campuses() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement campus service calls
-    setIsModalOpen(false);
-    loadData();
+    try {
+      const payload = {
+        ...formData,
+        university_id: parseInt(formData.university_id),
+      };
+
+      if (selectedCampus) {
+        await api.put(`/api/v1/campuses/${selectedCampus.id}`, payload);
+        toast.success('Campus updated!');
+      } else {
+        await api.post('/api/v1/campuses', payload);
+        toast.success('Campus created!');
+      }
+      setIsModalOpen(false);
+      loadData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to save campus');
+    }
   };
 
   const handleConfirmDelete = async () => {
     if (selectedCampus) {
-      // TODO: Implement campus delete
-      setIsDeleteModalOpen(false);
-      loadData();
+      try {
+        await api.delete(`/api/v1/campuses/${selectedCampus.id}`);
+        toast.success('Campus deleted!');
+        setIsDeleteModalOpen(false);
+        loadData();
+      } catch (error) {
+        toast.error('Failed to delete campus');
+      }
     }
   };
 
@@ -92,6 +132,15 @@ export default function Campuses() {
       key: 'city',
       header: 'City',
       render: (row: Campus) => row.city || 'N/A',
+    },
+    {
+      key: 'is_main_campus',
+      header: 'Main Campus',
+      render: (row: Campus) => (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${row.is_main_campus ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+          {row.is_main_campus ? 'Yes' : 'No'}
+        </span>
+      ),
     },
     {
       key: 'is_active',
@@ -143,7 +192,7 @@ export default function Campuses() {
       <PageHeader
         title="Campuses"
         subtitle="Manage campuses across universities"
-        action={
+        actions={
           <Button
             variant="primary"
             icon={<Plus className="w-4 h-4" />}
@@ -155,8 +204,8 @@ export default function Campuses() {
       />
 
       <DataTable
-        data={campuses}
-        columns={columns}
+        data={campuses as any}
+        columns={columns as any}
         emptyMessage="No campuses found"
       />
 
@@ -170,13 +219,17 @@ export default function Campuses() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">University</label>
-            <Select
-              value={formData.university_id?.toString() || ''}
-              onChange={(e) => setFormData({ ...formData, university_id: parseInt(e.target.value) })}
-              options={universities.map(u => ({ value: u.id.toString(), label: u.name }))}
-              placeholder="Select University"
+            <select
+              className="input-field"
+              value={formData.university_id || ''}
+              onChange={(e) => setFormData({ ...formData, university_id: e.target.value })}
               required
-            />
+            >
+              <option value="">Select University</option>
+              {universities.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -199,15 +252,6 @@ export default function Campuses() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-            <input
-              type="text"
-              className="input-field"
-              value={formData.city || ''}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-            />
-          </div>
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
             <textarea
               className="input-field"
@@ -216,16 +260,64 @@ export default function Campuses() {
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
             />
           </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="is_active"
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              checked={formData.is_active ?? true}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-            />
-            <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
-              Active
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+              <input
+                type="text"
+                className="input-field"
+                value={formData.city || ''}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+              <input
+                type="text"
+                className="input-field"
+                value={formData.state || ''}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+              <input
+                type="text"
+                className="input-field"
+                value={formData.postal_code || ''}
+                onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input
+                type="text"
+                className="input-field"
+                value={formData.phone || ''}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.is_main_campus}
+                onChange={(e) => setFormData({ ...formData, is_main_campus: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <span className="text-sm">Main Campus</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <span className="text-sm">Active</span>
             </label>
           </div>
         </div>

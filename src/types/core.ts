@@ -20,6 +20,53 @@ export interface University {
 export type CreateUniversity = Omit<University, 'id' | 'created_at' | 'updated_at'>;
 export type UpdateUniversity = Partial<CreateUniversity>;
 
+// Campus
+export interface Campus {
+  id: number;
+  university_id: number;
+  university?: University;
+  name: string;
+  code: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  is_main_campus: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  // Relations
+  departments?: Department[];
+  rooms?: Room[];
+}
+
+export type CreateCampus = Omit<Campus, 'id' | 'created_at' | 'updated_at' | 'university' | 'departments' | 'rooms'>;
+export type UpdateCampus = Partial<CreateCampus>;
+
+// Room
+export interface Room {
+  id: number;
+  campus_id: number;
+  campus?: Campus;
+  room_number: string;
+  room_type: 'lecture_hall' | 'lab' | 'seminar_room' | 'conference_room' | 'library' | 'office' | 'other';
+  capacity: number;
+  building?: string;
+  floor?: number;
+  has_projector: boolean;
+  has_whiteboard: boolean;
+  has_computers: boolean;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type CreateRoom = Omit<Room, 'id' | 'created_at' | 'updated_at' | 'campus'>;
+export type UpdateRoom = Partial<CreateRoom>;
+
 // College
 export interface College {
   id: number;
@@ -52,8 +99,10 @@ export interface College {
 // Department
 export interface Department {
   id: number;
-  college_id: number;
+  college_id?: number;
   college?: College;
+  campus_id?: number;
+  campus?: Campus;
   name: string;
   code: string;
   hod_id?: number;

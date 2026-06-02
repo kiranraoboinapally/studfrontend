@@ -34,8 +34,7 @@ export interface RegisterData {
   username: string;
   email: string;
   password: string;
-  phone?: string;
-  role?: UserRole;
+  role_name?: 'admin' | 'registrar' | 'finance' | 'faculty' | 'student';
 }
 
 export interface AuthResponse {
