@@ -13,7 +13,6 @@ import {
 } from "../../types/admissionPortal";
 import {
   submitEnquiry,
-  getQualificationFlow,
   getCountries,
   getStates,
   getDistricts,
@@ -31,30 +30,15 @@ const enquirySchema = z.object({
   state: z.string().min(1, "State is required"),
   district: z.string().min(1, "District is required"),
   preferred_campus: z.string().min(1, "Preferred campus is required"),
-  qualification_type: z.enum(["Diploma", "Advanced Diploma", "UG", "PG", "PG Diploma", "Doctorate", "Not Decided"]),
-  qualification: z.string().optional(),
-  faculty: z.string().optional(),
-  department: z.string().optional(),
+  qualification_type: z.string().min(1, "Qualification type is required"),
   program: z.string().optional(),
-  specialization: z.string().optional(),
 });
 
 type EnquiryFormData = z.infer<typeof enquirySchema>;
 
-const qualificationTypes: QualificationType[] = [
-  "Diploma",
-  "Advanced Diploma",
-  "UG",
-  "PG",
-  "PG Diploma",
-  "Doctorate",
-  "Not Decided",
-];
-
 export default function EnquiryForm() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [qualificationFlow, setQualificationFlow] = useState<QualificationFlow | null>(null);
   const [countries, setCountries] = useState<any[]>([]);
   const [states, setStates] = useState<any[]>([]);
   const [districts, setDistricts] = useState<any[]>([]);
@@ -81,12 +65,12 @@ export default function EnquiryForm() {
     loadInitialData();
   }, []);
 
-  // Load qualification flow when qualification type changes
+  // Load programs when qualification type changes
   useEffect(() => {
     if (watchedQualificationType) {
-      loadQualificationFlow(watchedQualificationType);
+      loadProgramsByDegreeType(watchedQualificationType);
     } else {
-      setQualificationFlow(null);
+      setPrograms([]);
     }
   }, [watchedQualificationType]);
 
@@ -407,7 +391,7 @@ export default function EnquiryForm() {
               </label>
               <select {...register("qualification_type")} className="input-field">
                 <option value="">Select qualification type</option>
-                {qualificationTypes.map((type) => (
+                {degreeTypes.map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
