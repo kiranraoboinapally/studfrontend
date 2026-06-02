@@ -152,7 +152,7 @@ export default function EnquiryForm() {
       if (response.success) {
         toast.success("Enquiry submitted successfully!");
         // Navigate to OTP verification
-        navigate("/otp-verification", { state: { enquiryId: response.data?.enquiry_id, mobile: data.mobile_number, email: data.email_address } });
+        navigate("/admission/otp", { state: { enquiryId: response.data?.enquiry_id, mobile: data.mobile_number, email: data.email_address } });
       } else {
         toast.error(response.error || "Failed to submit enquiry");
       }
@@ -162,7 +162,6 @@ export default function EnquiryForm() {
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
