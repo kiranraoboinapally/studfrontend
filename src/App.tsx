@@ -121,7 +121,7 @@ function AppRoutes() {
       <Route path="/register"        element={<Register />} />
       
       {/* Public - Admission Portal */}
-      <Route path="/admission/enquiry" element={<EnquiryForm />} />
+      <Route path="/admissions/enquiry" element={<EnquiryForm />} />
       <Route path="/admission/otp" element={<OTPVerification />} />
       
       {/* Public - Application Form (checks sessionStorage for applicant info) */}

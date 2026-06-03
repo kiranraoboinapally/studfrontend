@@ -54,3 +54,50 @@ To learn React, check out the [React documentation](https://reactjs.org/).
 netstat -ano | findstr :3000
 💀 Kill that process (replace PID)
 taskkill /PID 12345 /F
+
+
+psql -U postgres -d university_erp -f /home/admin/files/folder/studbackend/migrations/admissions/add_enquiries_table.sql
+
+
+-- Create schema if it doesn't exist
+CREATE SCHEMA IF NOT EXISTS admissions;
+
+-- Drop table if you want a fresh creation
+-- DROP TABLE IF EXISTS admissions.enquiries;
+
+CREATE TABLE IF NOT EXISTS admissions.enquiries
+(
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+
+    full_name TEXT NOT NULL,
+    mobile_number TEXT NOT NULL,
+    email_address TEXT NOT NULL,
+
+    country TEXT,
+    state TEXT,
+    district TEXT,
+
+    preferred_campus BIGINT,
+    qualification_type TEXT,
+    program_id BIGINT,
+
+    status TEXT DEFAULT 'pending',
+    otp_verified BOOLEAN DEFAULT FALSE,
+    otp_sent_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    CONSTRAINT enquiries_pkey PRIMARY KEY (id),
+    CONSTRAINT enquiries_mobile_number_key UNIQUE (mobile_number),
+    CONSTRAINT enquiries_email_address_key UNIQUE (email_address)
+);
+
+ALTER TABLE admissions.enquiries
+    OWNER TO postgres;
+
+CREATE INDEX IF NOT EXISTS idx_admissions_enquiries_status
+    ON admissions.enquiries (status);
+
+CREATE INDEX IF NOT EXISTS idx_admissions_enquiries_created_at
+    ON admissions.enquiries (created_at DESC);

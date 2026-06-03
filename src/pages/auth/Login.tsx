@@ -199,7 +199,7 @@ export default function Login() {
 
               <p className="text-center text-sm text-gray-500 mt-6">
                 New to the university?{" "}
-                <Link to="/admission/enquiry" className="text-primary-600 font-medium hover:underline">
+                <Link to="/admissions/enquiry" className="text-primary-600 font-medium hover:underline">
                   Start Admission Process
                 </Link>
               </p>
